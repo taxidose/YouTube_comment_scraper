@@ -1,5 +1,4 @@
 from secret import API_KEY
-from api_answer import answer1
 from googleapiclient.discovery import build
 import pandas as pd
 import datetime
