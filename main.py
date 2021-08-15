@@ -5,14 +5,9 @@ import datetime
 
 comment_counter = 0
 
-VIDEO_ID = "X3EHnj5YtFU"
-
 
 def request_comments(video_id=None, page_token=None):
     youtube = build('youtube', 'v3', developerKey=API_KEY)
-
-    if video_id is None:
-        video_id = VIDEO_ID
 
     try:
         request = youtube.commentThreads().list(
@@ -24,8 +19,9 @@ def request_comments(video_id=None, page_token=None):
 
         return request.execute()
 
-    except Exception:
+    except Exception as e:
         print("Couldn't request video")
+        print("Error: " + e)
         main()
 
 
@@ -54,13 +50,13 @@ def update_df(api_response_data, df=None):
 
         comment = item['snippet']['topLevelComment']['snippet']['textDisplay']
         comments_text.append(comment)
-        datetime = item["snippet"]["topLevelComment"]["snippet"]["publishedAt"]
-        datetimes.append(datetime)
+        datetime_ = item["snippet"]["topLevelComment"]["snippet"]["publishedAt"]
+        datetimes.append(datetime_)
         author_name = item["snippet"]["topLevelComment"]["snippet"]["authorDisplayName"]
         author_names.append(author_name)
         author_id = item["snippet"]["topLevelComment"]["snippet"]["authorChannelId"]["value"]
         author_ids.append(author_id)
-        # print(f"{comment=}, {datetime=}, {author_name=}")
+        # print(f"{comment=}, {datetime_=}, {author_name=}")
 
     new_df = pd.DataFrame(list(zip(datetimes, comments_text, author_names, author_ids)),
                           columns=["Datetime", "Comment", "Authorname", "Author-ID"])
@@ -72,7 +68,9 @@ def update_df(api_response_data, df=None):
 
 
 def main():
-    print(f"--------------------\nYT Comment Scraper\n(Only top-level comments get scraped.)\n--------------------")
+    global comment_counter
+    print(
+        f"--------------------\nYouTube Comment Scraper\n(Only top-level comments get scraped.)\n--------------------")
     video_id = input("Enter video-id: ")
 
     response = request_comments(video_id)
@@ -86,11 +84,11 @@ def main():
     while True:
         page_counter += 1
         try:
-            response = request_comments(page_token=response["nextPageToken"])
+            response = request_comments(video_id=video_id, page_token=response["nextPageToken"])
             df = update_df(response, df)
             print(f"commentpage {page_counter} read... df updated...")
         except Exception as e:
-            print("end rechead...")
+            print(f"end reached... [{e}]")
             break
 
     date = datetime.datetime.now()
@@ -99,14 +97,15 @@ def main():
     filename = f"{video_id}_{today}.csv"
     df.to_csv(filename, index=False)
 
-    print(f"\n{filename}.csv file created... finished... ({comment_counter} toplevel comments)")
+    print(f"\n{filename} file created... finished... ({comment_counter} toplevel comments)")
 
     # for comment in response["items"]:
     #     print(comment["snippet"]["topLevelComment"]["snippet"]["textDisplay"])
 
-    choice = input("\nScrape another video? ")
+    choice = input("\nScrape another video? (Yes/No): ")
     choice = choice.lower()
     if choice in ["yes", "y", "ja", "j"]:
+        comment_counter = 0
         main()
 
 
